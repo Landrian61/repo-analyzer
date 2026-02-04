@@ -46,6 +46,32 @@ const SUGGESTIONS = [
   "Display contribution trends",
 ];
 
+// Helper component to render assistant messages with proper JSON detection
+function AssistantMessage({ message }: { message: Message }) {
+  // First, check if we have a proper response object
+  if (message.response && message.response.type && message.response.data) {
+    return <AIResponse response={message.response} />;
+  }
+  
+  // If no response field, try to parse content as JSON
+  const content = message.content;
+  if (content && content.trim().startsWith("{") && content.includes('"type"')) {
+    try {
+      const parsed = JSON.parse(content.trim());
+      if (parsed && parsed.type && parsed.data) {
+        // Successfully parsed JSON response
+        return <AIResponse response={parsed} />;
+      }
+    } catch (e) {
+      // Not valid JSON, will fall through to TextResponse
+      console.log('[AssistantMessage] Failed to parse JSON:', e);
+    }
+  }
+  
+  // Fall back to text response
+  return <TextResponse content={content || ""} />;
+}
+
 export function ChatMessages({ messages, isLoading, onSuggestionClick, progressMessage }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -272,27 +298,7 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
                 </Typography>
               ) : (
                 // Assistant message - rich content
-                <>
-                  {message.response && message.response.type ? (
-                    <AIResponse response={message.response} />
-                  ) : (
-                    // Try to parse content as JSON if it looks like a response object
-                    (() => {
-                      const content = message.content;
-                      if (content.startsWith("{") && content.includes('"type"')) {
-                        try {
-                          const parsed = JSON.parse(content);
-                          if (parsed.type && parsed.data) {
-                            return <AIResponse response={parsed} />;
-                          }
-                        } catch (e) {
-                          // Not valid JSON, fall through to text response
-                        }
-                      }
-                      return <TextResponse content={content} />;
-                    })()
-                  )}
-                </>
+                <AssistantMessage message={message} />
               )}
 
               {/* Copy button */}

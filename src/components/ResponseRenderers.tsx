@@ -37,13 +37,21 @@ const CHART_COLORS = [
   "#06b6d4",
 ];
 
+// Valid response types
+type ResponseType = "text" | "diff" | "chart" | "table" | "mixed";
+
+// Response props interface (forward declaration for use throughout file)
+interface AIResponseProps {
+  response: {
+    type: ResponseType;
+    data: any;
+  };
+}
+
 // Text Response Renderer
 interface TextResponseProps {
   content: string;
 }
-
-// Valid response types
-type ResponseType = "text" | "diff" | "chart" | "table" | "mixed";
 
 // Helper to detect and parse JSON response content
 function tryParseJsonResponse(content: string): { type: ResponseType; data: any } | null {
@@ -113,18 +121,7 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-export function TextResponse({ content }: TextResponseProps) {
-  // Check if content is actually a JSON response that should be rendered as rich content
-  const parsedResponse = tryParseJsonResponse(content);
-  
-  if (parsedResponse) {
-    // Render as rich content using the appropriate renderer
-    return <AIResponseInner response={parsedResponse} />;
-  }
-  
-  // Regular markdown content
-  return <MarkdownContent content={content} />;
-}
+// TextResponse is defined later after all dependencies are available
 
 // Diff Response Renderer
 interface DiffResponseProps {
@@ -560,7 +557,8 @@ export function MixedResponse({ sections }: MixedResponseProps) {
       {sections.map((section, index) => {
         switch (section.type) {
           case "text":
-            return <TextResponse key={index} content={section.data.content} />;
+            // Use MarkdownContent to avoid circular dependency
+            return <MarkdownContent key={index} content={section.data?.content || ""} />;
           case "diff":
             return <DiffResponse key={index} {...section.data} />;
           case "chart":
@@ -573,14 +571,6 @@ export function MixedResponse({ sections }: MixedResponseProps) {
       })}
     </Box>
   );
-}
-
-// Main Response Renderer that handles all types
-interface AIResponseProps {
-  response: {
-    type: "text" | "diff" | "chart" | "table" | "mixed";
-    data: any;
-  };
 }
 
 // Inner response renderer that avoids circular dependency with TextResponse
@@ -629,6 +619,22 @@ function MixedResponseInner({ sections }: { sections: Array<{ type: string; data
   );
 }
 
+// TextResponse - defined here after AIResponseInner to enable JSON detection
+export function TextResponse({ content }: TextResponseProps) {
+  // Check if content is actually a JSON response that should be rendered as rich content
+  const parsedResponse = tryParseJsonResponse(content);
+  
+  if (parsedResponse) {
+    console.log('[TextResponse] Detected JSON response, type:', parsedResponse.type);
+    // Render as rich content using the appropriate renderer
+    return <AIResponseInner response={parsedResponse} />;
+  }
+  
+  // Regular markdown content
+  return <MarkdownContent content={content} />;
+}
+
+// Main Response Renderer that handles all types (public API)
 export function AIResponse({ response }: AIResponseProps) {
   switch (response.type) {
     case "text":
