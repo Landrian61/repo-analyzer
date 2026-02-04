@@ -10,6 +10,7 @@ import {
   ListItemText,
   Typography,
   alpha,
+  useTheme,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import BoltIcon from "@mui/icons-material/Bolt";
@@ -89,6 +90,9 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
   };
 
   const selectedModel = GEMINI_MODELS.find((m) => m.id === selectedModelId) || GEMINI_MODELS[0];
+  
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
   return (
     <>
@@ -98,17 +102,17 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
         size={compact ? "small" : "medium"}
         endIcon={GEMINI_MODELS.length > 1 ? <KeyboardArrowDownIcon /> : undefined}
         sx={{
-          borderColor: alpha("#ffffff", 0.12),
+          borderColor: alpha(isDark ? "#ffffff" : "#000000", 0.12),
           color: "text.primary",
           textTransform: "none",
           borderRadius: 2,
           px: compact ? 1.5 : 2,
           py: compact ? 0.5 : 0.75,
-          backgroundColor: alpha("#ffffff", 0.03),
+          backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.03),
           cursor: GEMINI_MODELS.length > 1 ? "pointer" : "default",
           "&:hover": {
-            borderColor: GEMINI_MODELS.length > 1 ? alpha("#8b5cf6", 0.5) : alpha("#ffffff", 0.12),
-            backgroundColor: GEMINI_MODELS.length > 1 ? alpha("#8b5cf6", 0.08) : alpha("#ffffff", 0.03),
+            borderColor: GEMINI_MODELS.length > 1 ? alpha("#8b5cf6", 0.5) : alpha(isDark ? "#ffffff" : "#000000", 0.12),
+            backgroundColor: GEMINI_MODELS.length > 1 ? alpha("#8b5cf6", 0.08) : alpha(isDark ? "#ffffff" : "#000000", 0.03),
           },
         }}
       >
@@ -137,11 +141,11 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
           PaperProps={{
             sx: {
               minWidth: 280,
-              backgroundColor: "#1e1e21",
-              border: `1px solid ${alpha("#ffffff", 0.1)}`,
+              backgroundColor: isDark ? "#1e1e21" : "#ffffff",
+              border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
               borderRadius: 2,
               mt: 1,
-              boxShadow: `0 8px 32px ${alpha("#000000", 0.5)}`,
+              boxShadow: `0 8px 32px ${alpha("#000000", isDark ? 0.5 : 0.15)}`,
             },
           }}
         >

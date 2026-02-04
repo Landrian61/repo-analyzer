@@ -213,12 +213,24 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
       sx={{
         flexGrow: 1,
         overflow: "auto",
-        p: 3,
+        py: 3,
+        px: { xs: 2, sm: 3, md: 4, lg: 6 },
         display: "flex",
         flexDirection: "column",
         gap: 3,
       }}
     >
+      {/* Centered content container */}
+      <Box
+        sx={{
+          maxWidth: 800,
+          width: "100%",
+          mx: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+        }}
+      >
       {messages.map((message) => (
         <Box
           key={message._id}
@@ -390,6 +402,7 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
 
       {/* Scroll anchor */}
       <div ref={messagesEndRef} />
+      </Box>
     </Box>
   );
 }

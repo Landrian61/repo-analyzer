@@ -111,12 +111,21 @@ export function MessageInput({
   return (
     <Box
       sx={{
-        p: 3,
+        py: 2,
+        px: { xs: 2, sm: 3, md: 4, lg: 6 },
         borderTop: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.08)}`,
         backgroundColor: alpha(isDark ? "#0f0f10" : "#f8fafc", 0.95),
         backdropFilter: "blur(12px)",
       }}
     >
+      {/* Centered content container */}
+      <Box
+        sx={{
+          maxWidth: 800,
+          width: "100%",
+          mx: "auto",
+        }}
+      >
       {/* Selected contributors chips */}
       {selectedContributors.length > 0 && (
         <Box 
@@ -418,6 +427,7 @@ export function MessageInput({
           )}
         </Box>
       </Menu>
+      </Box>
     </Box>
   );
 }

@@ -6,7 +6,7 @@ import { Box, Typography, CircularProgress, Alert, alpha, Avatar, Chip } from "@
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { ChatSidebar } from "@/components/ChatSidebar";
+import { ChatSidebar, SIDEBAR_WIDTH_EXPANDED, SIDEBAR_WIDTH_COLLAPSED } from "@/components/ChatSidebar";
 import { ChatMessages } from "@/components/ChatMessages";
 import { MessageInput } from "@/components/MessageInput";
 import { ModelSelector, useSelectedModel } from "@/components/ModelSelector";
@@ -14,8 +14,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import StarIcon from "@mui/icons-material/Star";
 import ForkRightIcon from "@mui/icons-material/ForkRight";
 import { useTheme } from "@mui/material";
-
-const SIDEBAR_WIDTH = 280;
 
 export default function RepositoryPage() {
   const params = useParams();
@@ -27,6 +25,7 @@ export default function RepositoryPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [contributors, setContributors] = useState<any[] | undefined>(undefined);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Get selected AI model
   const selectedModelId = useSelectedModel();
@@ -232,9 +231,10 @@ export default function RepositoryPage() {
           flexGrow: 1,
           display: "flex",
           flexDirection: "column",
-          ml: { xs: 0, md: `${SIDEBAR_WIDTH}px` },
+          ml: { xs: 0, md: `${SIDEBAR_WIDTH_EXPANDED}px` },
           height: "100vh",
           overflow: "hidden",
+          transition: "margin-left 200ms ease",
         }}
       >
         {/* Chat header - cleaner design */}
