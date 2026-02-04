@@ -273,10 +273,24 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
               ) : (
                 // Assistant message - rich content
                 <>
-                  {message.response ? (
+                  {message.response && message.response.type ? (
                     <AIResponse response={message.response} />
                   ) : (
-                    <TextResponse content={message.content} />
+                    // Try to parse content as JSON if it looks like a response object
+                    (() => {
+                      const content = message.content;
+                      if (content.startsWith("{") && content.includes('"type"')) {
+                        try {
+                          const parsed = JSON.parse(content);
+                          if (parsed.type && parsed.data) {
+                            return <AIResponse response={parsed} />;
+                          }
+                        } catch (e) {
+                          // Not valid JSON, fall through to text response
+                        }
+                      }
+                      return <TextResponse content={content} />;
+                    })()
                   )}
                 </>
               )}

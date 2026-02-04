@@ -289,13 +289,36 @@ export const analyzeWithTools = action({
         };
       }
 
+      // Ensure response has proper structure before saving
+      // Validate that parsedResponse has the expected format
+      const validatedResponse = {
+        type: parsedResponse.type || "text",
+        data: parsedResponse.data || { content: responseText },
+      };
+
+      // For content field, extract a text summary
+      let contentSummary = responseText;
+      if (validatedResponse.type === "text" && typeof validatedResponse.data?.content === "string") {
+        contentSummary = validatedResponse.data.content;
+      } else if (validatedResponse.type === "mixed" && Array.isArray(validatedResponse.data?.sections)) {
+        // For mixed responses, try to extract text from the first text section
+        const textSection = validatedResponse.data.sections.find((s: any) => s.type === "text");
+        if (textSection?.data?.content) {
+          contentSummary = textSection.data.content;
+        }
+      } else if (validatedResponse.type === "diff") {
+        contentSummary = `Code changes: ${validatedResponse.data?.title || "Diff"}`;
+      } else if (validatedResponse.type === "chart") {
+        contentSummary = `Chart: ${validatedResponse.data?.title || "Data visualization"}`;
+      } else if (validatedResponse.type === "table") {
+        contentSummary = `Table: ${validatedResponse.data?.title || "Data table"}`;
+      }
+
       // Save the assistant message with tool calls info
       await ctx.runMutation(internal.messages.addAssistantMessageInternal, {
         chatId,
-        content: typeof parsedResponse.data?.content === "string"
-          ? parsedResponse.data.content
-          : responseText,
-        response: parsedResponse,
+        content: contentSummary,
+        response: validatedResponse,
         toolCalls: toolCallsExecuted.length > 0 ? toolCallsExecuted : undefined,
       });
 
