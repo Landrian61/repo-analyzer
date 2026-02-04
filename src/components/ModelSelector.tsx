@@ -34,6 +34,16 @@ export const GEMINI_MODELS: GeminiModel[] = [
     description: "Lightweight and fast for quick analysis",
   },
   {
+    id: "gemma-3-27b-it",
+    name: "Gemma 3 27B",
+    description: "Large open model with strong reasoning",
+  },
+  {
+    id: "gemma-3-12b-it",
+    name: "Gemma 3 12B",
+    description: "Mid-size open model, fast and capable",
+  },
+  {
     id: "gemini-3-flash-preview",
     name: "Gemini 3 Flash Preview",
     description: "Preview of next-gen model (experimental)",
@@ -140,7 +150,7 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
               Select AI Model
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              Choose which Gemini model to use
+              Choose which model to use for analysis
             </Typography>
           </Box>
 
