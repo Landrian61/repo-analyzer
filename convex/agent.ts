@@ -288,10 +288,43 @@ export const analyzeWithTools = action({
     } catch (error: any) {
       console.error("Agent error:", error);
 
+      let errorContent: string;
+
+      // Check for rate limit / quota exceeded errors
+      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("Too Many Requests")) {
+        // Extract retry delay if available
+        let retryInfo = "";
+        if (error.errorDetails) {
+          const retryDetail = error.errorDetails.find((detail: any) => detail["@type"]?.includes("RetryInfo"));
+          if (retryDetail?.retryDelay) {
+            const seconds = parseInt(retryDetail.retryDelay);
+            retryInfo = seconds > 60 
+              ? ` Please try again in about ${Math.ceil(seconds / 60)} minutes.`
+              : ` Please try again in ${seconds} seconds.`;
+          }
+        }
+
+        // Extract model name
+        const modelMatch = error.message?.match(/model:\s*([^\s,]+)/);
+        const modelName = modelMatch ? modelMatch[1] : selectedModel;
+
+        errorContent = `⏱️ **Rate Limit Reached**\n\nYou've reached the request limit for the **${modelName}** model.${retryInfo}\n\n**What you can do:**\n- Wait a moment and try again\n- Switch to a different Gemini model in the header\n- Upgrade your Gemini API plan for higher limits\n\n💡 *Tip: Different models have separate rate limits, so switching models can help!*`;
+      } else if (error.status === 400) {
+        errorContent = `❌ **Invalid Request**\n\nThere was an issue with the request format.\n\nThis might be a temporary issue. Please try:\n- Rephrasing your question\n- Trying a different model\n- Waiting a moment and trying again`;
+      } else if (error.status === 403) {
+        errorContent = `🔒 **Access Denied**\n\nThe API key doesn't have permission for this operation.\n\nPlease check:\n- Your Gemini API key is valid\n- The API key has the necessary permissions\n- Your API quota hasn't been exceeded`;
+      } else if (error.status === 404) {
+        errorContent = `🔍 **Model Not Found**\n\nThe selected AI model (${selectedModel}) couldn't be found.\n\nThis might mean:\n- The model is not available in your region\n- The model name has changed\n- The model requires a different API tier\n\nTry selecting a different model from the header.`;
+      } else {
+        // Generic error
+        const shortError = error.message?.split('\n')[0] || "An unexpected error occurred";
+        errorContent = `❌ **Error analyzing repository**\n\n${shortError}\n\nPlease try again or rephrase your question.`;
+      }
+
       const errorResponse = {
         type: "text" as const,
         data: {
-          content: `❌ **Error analyzing repository**\n\n${error.message}\n\nPlease try again or rephrase your question.`,
+          content: errorContent,
         },
       };
 
@@ -395,10 +428,23 @@ Return JSON with type: "text", "chart", "table", "diff", or "mixed".`;
 
       return parsedResponse;
     } catch (error: any) {
+      let errorContent: string;
+
+      // Check for rate limit / quota exceeded errors
+      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("Too Many Requests")) {
+        const modelMatch = error.message?.match(/model:\s*([^\s,]+)/);
+        const modelName = modelMatch ? modelMatch[1] : selectedModel;
+
+        errorContent = `⏱️ **Rate Limit Reached**\n\nYou've reached the request limit for the **${modelName}** model.\n\n**What you can do:**\n- Wait a moment and try again\n- Switch to a different Gemini model in the header\n- Upgrade your Gemini API plan for higher limits\n\n💡 *Tip: Different models have separate rate limits!*`;
+      } else {
+        const shortError = error.message?.split('\n')[0] || "An unexpected error occurred";
+        errorContent = `❌ **Error**: ${shortError}`;
+      }
+
       const errorResponse = {
         type: "text" as const,
         data: {
-          content: `❌ **Error**: ${error.message}`,
+          content: errorContent,
         },
       };
 

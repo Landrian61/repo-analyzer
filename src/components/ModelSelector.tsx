@@ -24,14 +24,24 @@ export interface GeminiModel {
 // Available models - more can be added later
 export const GEMINI_MODELS: GeminiModel[] = [
   {
+    id: "gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
+    description: "Latest balanced model for complex analysis",
+  },
+  {
+    id: "gemini-2.5-flash-lite",
+    name: "Gemini 2.5 Flash Lite",
+    description: "Lightweight and fast for quick analysis",
+  },
+  {
     id: "gemini-3-flash-preview",
     name: "Gemini 3 Flash Preview",
-    description: "Fast and efficient for repository analysis",
+    description: "Preview of next-gen model (experimental)",
   },
 ];
 
 const MODEL_STORAGE_KEY = "repo-analyzer-gemini-model";
-const DEFAULT_MODEL = "gemini-3-flash-preview";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 
 interface ModelSelectorProps {
   compact?: boolean;
@@ -95,7 +105,7 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
           <BoltIcon sx={{ fontSize: compact ? 16 : 18, color: "#8b5cf6" }} />
           <Typography variant={compact ? "caption" : "body2"} sx={{ fontWeight: 500 }}>
-            {compact ? "Gemini 3 Flash" : selectedModel.name}
+            {compact ? selectedModel.name.replace(" Preview", "") : selectedModel.name}
           </Typography>
         </Box>
       </Button>
