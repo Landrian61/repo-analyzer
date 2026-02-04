@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Box, Typography, Paper, alpha, Chip, Tooltip } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -41,7 +42,29 @@ interface TextResponseProps {
   content: string;
 }
 
-export function TextResponse({ content }: TextResponseProps) {
+// Valid response types
+type ResponseType = "text" | "diff" | "chart" | "table" | "mixed";
+
+// Helper to detect and parse JSON response content
+function tryParseJsonResponse(content: string): { type: ResponseType; data: any } | null {
+  if (!content || typeof content !== 'string') return null;
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('{') || !trimmed.includes('"type"')) return null;
+  
+  try {
+    const parsed = JSON.parse(trimmed);
+    const validTypes: ResponseType[] = ["text", "diff", "chart", "table", "mixed"];
+    if (parsed && typeof parsed === 'object' && validTypes.includes(parsed.type) && parsed.data) {
+      return parsed as { type: ResponseType; data: any };
+    }
+  } catch (e) {
+    // Not valid JSON
+  }
+  return null;
+}
+
+// Inner component for pure markdown rendering
+function MarkdownContent({ content }: { content: string }) {
   return (
     <Box className="markdown-content">
       <ReactMarkdown
@@ -88,6 +111,19 @@ export function TextResponse({ content }: TextResponseProps) {
       </ReactMarkdown>
     </Box>
   );
+}
+
+export function TextResponse({ content }: TextResponseProps) {
+  // Check if content is actually a JSON response that should be rendered as rich content
+  const parsedResponse = tryParseJsonResponse(content);
+  
+  if (parsedResponse) {
+    // Render as rich content using the appropriate renderer
+    return <AIResponseInner response={parsedResponse} />;
+  }
+  
+  // Regular markdown content
+  return <MarkdownContent content={content} />;
 }
 
 // Diff Response Renderer
@@ -299,8 +335,8 @@ export function ChartResponse({
                 outerRadius={100}
                 paddingAngle={2}
                 dataKey={datasets[0]?.label || "value"}
-                label={({ name, percent }) =>
-                  `${name} (${(percent * 100).toFixed(0)}%)`
+                label={(props: any) =>
+                  `${props.name || ''} (${((props.percent ?? 0) * 100).toFixed(0)}%)`
                 }
                 labelLine={false}
               >
@@ -547,10 +583,13 @@ interface AIResponseProps {
   };
 }
 
-export function AIResponse({ response }: AIResponseProps) {
+// Inner response renderer that avoids circular dependency with TextResponse
+// This is used when we detect JSON in TextResponse content
+function AIResponseInner({ response }: AIResponseProps): React.ReactElement {
   switch (response.type) {
     case "text":
-      return <TextResponse content={response.data.content} />;
+      // Use MarkdownContent directly to avoid infinite loop
+      return <MarkdownContent content={response.data?.content || ""} />;
     case "diff":
       return <DiffResponse {...response.data} />;
     case "chart":
@@ -558,7 +597,50 @@ export function AIResponse({ response }: AIResponseProps) {
     case "table":
       return <TableResponse {...response.data} />;
     case "mixed":
-      return <MixedResponse sections={response.data.sections} />;
+      return <MixedResponseInner sections={response.data?.sections || []} />;
+    default:
+      return (
+        <MarkdownContent
+          content={typeof response.data === "string" ? response.data : JSON.stringify(response.data, null, 2)}
+        />
+      );
+  }
+}
+
+// Mixed response renderer that uses AIResponseInner to avoid circular deps
+function MixedResponseInner({ sections }: { sections: Array<{ type: string; data: any }> }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {sections.map((section, index) => {
+        switch (section.type) {
+          case "text":
+            return <MarkdownContent key={index} content={section.data?.content || ""} />;
+          case "diff":
+            return <DiffResponse key={index} {...section.data} />;
+          case "chart":
+            return <ChartResponse key={index} {...section.data} />;
+          case "table":
+            return <TableResponse key={index} {...section.data} />;
+          default:
+            return null;
+        }
+      })}
+    </Box>
+  );
+}
+
+export function AIResponse({ response }: AIResponseProps) {
+  switch (response.type) {
+    case "text":
+      return <TextResponse content={response.data?.content || ""} />;
+    case "diff":
+      return <DiffResponse {...response.data} />;
+    case "chart":
+      return <ChartResponse {...response.data} />;
+    case "table":
+      return <TableResponse {...response.data} />;
+    case "mixed":
+      return <MixedResponse sections={response.data?.sections || []} />;
     default:
       // Fallback to text if type is unknown
       return (
