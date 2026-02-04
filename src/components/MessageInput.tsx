@@ -18,6 +18,7 @@ import {
   InputAdornment,
   Divider,
   Badge,
+  useTheme,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import AddIcon from "@mui/icons-material/Add";
@@ -104,12 +105,15 @@ export function MessageInput({
     c.login.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   return (
     <Box
       sx={{
         p: 3,
-        borderTop: `1px solid ${alpha("#ffffff", 0.08)}`,
-        backgroundColor: alpha("#0f0f10", 0.95),
+        borderTop: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.08)}`,
+        backgroundColor: alpha(isDark ? "#0f0f10" : "#f8fafc", 0.95),
         backdropFilter: "blur(12px)",
       }}
     >
@@ -157,9 +161,9 @@ export function MessageInput({
                   backgroundColor: alpha("#8b5cf6", 0.2),
                   border: `1px solid ${alpha("#8b5cf6", 0.3)}`,
                   "& .MuiChip-deleteIcon": {
-                    color: alpha("#ffffff", 0.6),
+                    color: alpha(isDark ? "#ffffff" : "#000000", 0.6),
                     "&:hover": {
-                      color: alpha("#ffffff", 0.9),
+                      color: alpha(isDark ? "#ffffff" : "#000000", 0.9),
                     },
                   },
                 }}
@@ -177,12 +181,12 @@ export function MessageInput({
           gap: 1,
           p: 1,
           borderRadius: 3,
-          backgroundColor: alpha("#ffffff", 0.05),
-          border: `1px solid ${alpha("#ffffff", 0.1)}`,
+          backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.05),
+          border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
           transition: "all 200ms ease",
           "&:focus-within": {
             borderColor: alpha("#8b5cf6", 0.5),
-            backgroundColor: alpha("#ffffff", 0.07),
+            backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.07),
           },
         }}
       >
@@ -196,7 +200,7 @@ export function MessageInput({
             backgroundColor: selectedContributors.length > 0 
               ? alpha("#8b5cf6", 0.2) 
               : "transparent",
-            border: `1px solid ${alpha("#ffffff", 0.1)}`,
+            border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
             "&:hover": {
               backgroundColor: alpha("#8b5cf6", 0.15),
               borderColor: alpha("#8b5cf6", 0.3),
@@ -252,14 +256,14 @@ export function MessageInput({
           sx={{
             width: 40,
             height: 40,
-            backgroundColor: message.trim() ? "primary.main" : alpha("#ffffff", 0.1),
+            backgroundColor: message.trim() ? "primary.main" : alpha(isDark ? "#ffffff" : "#000000", 0.1),
             color: message.trim() ? "white" : "text.secondary",
             "&:hover": {
-              backgroundColor: message.trim() ? "primary.dark" : alpha("#ffffff", 0.15),
+              backgroundColor: message.trim() ? "primary.dark" : alpha(isDark ? "#ffffff" : "#000000", 0.15),
             },
             "&:disabled": {
-              backgroundColor: alpha("#ffffff", 0.05),
-              color: alpha("#ffffff", 0.3),
+              backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.05),
+              color: alpha(isDark ? "#ffffff" : "#000000", 0.3),
             },
             transition: "all 200ms ease",
           }}
@@ -289,11 +293,11 @@ export function MessageInput({
           sx: {
             width: 320,
             maxHeight: 400,
-            backgroundColor: "#1e1e21",
-            border: `1px solid ${alpha("#ffffff", 0.1)}`,
+            backgroundColor: isDark ? "#1e1e21" : "#ffffff",
+            border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
             borderRadius: 3,
             mt: -1,
-            boxShadow: `0 8px 32px ${alpha("#000000", 0.5)}`,
+            boxShadow: `0 8px 32px ${alpha("#000000", isDark ? 0.5 : 0.15)}`,
           },
         }}
       >
@@ -320,14 +324,14 @@ export function MessageInput({
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                backgroundColor: alpha("#ffffff", 0.05),
+                backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.05),
                 borderRadius: 2,
               },
             }}
           />
         </Box>
 
-        <Divider sx={{ borderColor: alpha("#ffffff", 0.08) }} />
+        <Divider sx={{ borderColor: alpha(isDark ? "#ffffff" : "#000000", 0.08) }} />
 
         {/* Clear selection option */}
         {selectedContributors.length > 0 && (
@@ -350,7 +354,7 @@ export function MessageInput({
                 secondary={`${selectedContributors.length} selected`}
               />
             </MenuItem>
-            <Divider sx={{ borderColor: alpha("#ffffff", 0.08) }} />
+            <Divider sx={{ borderColor: alpha(isDark ? "#ffffff" : "#000000", 0.08) }} />
           </>
         )}
 
