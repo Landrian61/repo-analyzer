@@ -11,47 +11,60 @@ import {
   Typography,
   alpha,
   useTheme,
+  Divider,
+  Chip,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckIcon from "@mui/icons-material/Check";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
-export interface GeminiModel {
+export interface AIModel {
   id: string;
   name: string;
   description: string;
+  provider: "gemini" | "groq";
+  contextWindow?: string;
 }
 
-// Available models - more can be added later
-export const GEMINI_MODELS: GeminiModel[] = [
+// Available models - organized by provider
+export const AI_MODELS: AIModel[] = [
+  // Gemini models
   {
     id: "gemini-2.5-flash",
     name: "Gemini 2.5 Flash",
-    description: "Latest balanced model for complex analysis",
+    description: "Balanced speed & quality",
+    provider: "gemini",
+    contextWindow: "1M tokens",
   },
   {
     id: "gemini-2.5-flash-lite",
     name: "Gemini 2.5 Flash Lite",
-    description: "Lightweight and fast for quick analysis",
+    description: "Lightweight and fast",
+    provider: "gemini",
+    contextWindow: "1M tokens",
+  },
+  // Groq models
+  {
+    id: "llama-3.3-70b-versatile",
+    name: "Llama 3.3 70B",
+    description: "Reliable tool logic",
+    provider: "groq",
+    contextWindow: "128k tokens",
   },
   {
-    id: "gemma-3-27b-it",
-    name: "Gemma 3 27B",
-    description: "Large open model with strong reasoning",
-  },
-  {
-    id: "gemma-3-12b-it",
-    name: "Gemma 3 12B",
-    description: "Mid-size open model, fast and capable",
-  },
-  {
-    id: "gemini-3-flash-preview",
-    name: "Gemini 3 Flash Preview",
-    description: "Preview of next-gen model (experimental)",
+    id: "openai/gpt-oss-120b",
+    name: "GPT-OSS 120B",
+    description: "High reasoning & agents",
+    provider: "groq",
+    contextWindow: "131k tokens",
   },
 ];
 
-const MODEL_STORAGE_KEY = "repo-analyzer-gemini-model";
+// Legacy export for backwards compatibility
+export const GEMINI_MODELS = AI_MODELS;
+
+const MODEL_STORAGE_KEY = "repo-analyzer-ai-model";
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
 interface ModelSelectorProps {
@@ -67,14 +80,13 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
   // Load saved model preference
   useEffect(() => {
     const saved = localStorage.getItem(MODEL_STORAGE_KEY);
-    if (saved && GEMINI_MODELS.some((m) => m.id === saved)) {
+    if (saved && AI_MODELS.some((m) => m.id === saved)) {
       setSelectedModelId(saved);
     }
   }, []);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    // Only open menu if there are multiple models
-    if (GEMINI_MODELS.length > 1) {
+    if (AI_MODELS.length > 1) {
       setAnchorEl(event.currentTarget);
     }
   };
@@ -89,10 +101,20 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
     handleClose();
   };
 
-  const selectedModel = GEMINI_MODELS.find((m) => m.id === selectedModelId) || GEMINI_MODELS[0];
+  const selectedModel = AI_MODELS.find((m) => m.id === selectedModelId) || AI_MODELS[0];
   
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+
+  // Group models by provider
+  const geminiModels = AI_MODELS.filter(m => m.provider === "gemini");
+  const groqModels = AI_MODELS.filter(m => m.provider === "groq");
+
+  // Provider colors
+  const providerColors = {
+    gemini: "#4285f4",
+    groq: "#f97316",
+  };
 
   return (
     <>
@@ -100,7 +122,7 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
         onClick={handleClick}
         variant="outlined"
         size={compact ? "small" : "medium"}
-        endIcon={GEMINI_MODELS.length > 1 ? <KeyboardArrowDownIcon /> : undefined}
+        endIcon={AI_MODELS.length > 1 ? <KeyboardArrowDownIcon /> : undefined}
         sx={{
           borderColor: alpha(isDark ? "#ffffff" : "#000000", 0.12),
           color: "text.primary",
@@ -109,23 +131,26 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
           px: compact ? 1.5 : 2,
           py: compact ? 0.5 : 0.75,
           backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.03),
-          cursor: GEMINI_MODELS.length > 1 ? "pointer" : "default",
+          cursor: AI_MODELS.length > 1 ? "pointer" : "default",
           "&:hover": {
-            borderColor: GEMINI_MODELS.length > 1 ? alpha("#8b5cf6", 0.5) : alpha(isDark ? "#ffffff" : "#000000", 0.12),
-            backgroundColor: GEMINI_MODELS.length > 1 ? alpha("#8b5cf6", 0.08) : alpha(isDark ? "#ffffff" : "#000000", 0.03),
+            borderColor: AI_MODELS.length > 1 ? alpha("#8b5cf6", 0.5) : alpha(isDark ? "#ffffff" : "#000000", 0.12),
+            backgroundColor: AI_MODELS.length > 1 ? alpha("#8b5cf6", 0.08) : alpha(isDark ? "#ffffff" : "#000000", 0.03),
           },
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <BoltIcon sx={{ fontSize: compact ? 16 : 18, color: "#8b5cf6" }} />
+          {selectedModel.provider === "groq" ? (
+            <AutoAwesomeIcon sx={{ fontSize: compact ? 16 : 18, color: providerColors.groq }} />
+          ) : (
+            <BoltIcon sx={{ fontSize: compact ? 16 : 18, color: providerColors.gemini }} />
+          )}
           <Typography variant={compact ? "caption" : "body2"} sx={{ fontWeight: 500 }}>
-            {compact ? selectedModel.name.replace(" Preview", "") : selectedModel.name}
+            {compact ? selectedModel.name.split(" ").slice(0, 2).join(" ") : selectedModel.name}
           </Typography>
         </Box>
       </Button>
 
-      {/* Menu only shows if there are multiple models */}
-      {GEMINI_MODELS.length > 1 && (
+      {AI_MODELS.length > 1 && (
         <Menu
           anchorEl={anchorEl}
           open={open}
@@ -140,7 +165,7 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
           }}
           PaperProps={{
             sx: {
-              minWidth: 280,
+              minWidth: 300,
               backgroundColor: isDark ? "#1e1e21" : "#ffffff",
               border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
               borderRadius: 2,
@@ -154,34 +179,110 @@ export function ModelSelector({ compact = false }: ModelSelectorProps) {
               Select AI Model
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              Choose which model to use for analysis
+              Choose a model for analysis
             </Typography>
           </Box>
 
-          {GEMINI_MODELS.map((model) => (
+          {/* Gemini Models */}
+          <Box sx={{ px: 2, py: 0.5 }}>
+            <Chip 
+              label="Google Gemini" 
+              size="small" 
+              sx={{ 
+                backgroundColor: alpha(providerColors.gemini, 0.1),
+                color: providerColors.gemini,
+                fontWeight: 600,
+                fontSize: "0.65rem",
+                height: 20,
+              }} 
+            />
+          </Box>
+          {geminiModels.map((model) => (
             <MenuItem
               key={model.id}
               onClick={() => handleSelectModel(model.id)}
               selected={model.id === selectedModelId}
               sx={{
-                py: 1.5,
+                py: 1.25,
                 px: 2,
                 "&.Mui-selected": {
-                  backgroundColor: alpha("#8b5cf6", 0.12),
+                  backgroundColor: alpha(providerColors.gemini, 0.1),
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 36, color: "#8b5cf6" }}>
+              <ListItemIcon sx={{ minWidth: 32, color: providerColors.gemini }}>
                 <BoltIcon sx={{ fontSize: 18 }} />
               </ListItemIcon>
               <ListItemText
-                primary={model.name}
+                primary={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <span>{model.name}</span>
+                    {model.contextWindow && (
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.65rem" }}>
+                        {model.contextWindow}
+                      </Typography>
+                    )}
+                  </Box>
+                }
                 secondary={model.description}
-                primaryTypographyProps={{ fontWeight: 500, fontSize: "0.9rem" }}
-                secondaryTypographyProps={{ fontSize: "0.75rem" }}
+                primaryTypographyProps={{ fontWeight: 500, fontSize: "0.85rem" }}
+                secondaryTypographyProps={{ fontSize: "0.7rem" }}
               />
               {model.id === selectedModelId && (
-                <CheckIcon sx={{ fontSize: 18, color: "primary.main", ml: 1 }} />
+                <CheckIcon sx={{ fontSize: 16, color: providerColors.gemini, ml: 1 }} />
+              )}
+            </MenuItem>
+          ))}
+
+          <Divider sx={{ my: 1, borderColor: alpha(isDark ? "#ffffff" : "#000000", 0.08) }} />
+
+          {/* Groq Models */}
+          <Box sx={{ px: 2, py: 0.5 }}>
+            <Chip 
+              label="Groq (Fast)" 
+              size="small" 
+              sx={{ 
+                backgroundColor: alpha(providerColors.groq, 0.1),
+                color: providerColors.groq,
+                fontWeight: 600,
+                fontSize: "0.65rem",
+                height: 20,
+              }} 
+            />
+          </Box>
+          {groqModels.map((model) => (
+            <MenuItem
+              key={model.id}
+              onClick={() => handleSelectModel(model.id)}
+              selected={model.id === selectedModelId}
+              sx={{
+                py: 1.25,
+                px: 2,
+                "&.Mui-selected": {
+                  backgroundColor: alpha(providerColors.groq, 0.1),
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 32, color: providerColors.groq }}>
+                <AutoAwesomeIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
+              <ListItemText
+                primary={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <span>{model.name}</span>
+                    {model.contextWindow && (
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.65rem" }}>
+                        {model.contextWindow}
+                      </Typography>
+                    )}
+                  </Box>
+                }
+                secondary={model.description}
+                primaryTypographyProps={{ fontWeight: 500, fontSize: "0.85rem" }}
+                secondaryTypographyProps={{ fontSize: "0.7rem" }}
+              />
+              {model.id === selectedModelId && (
+                <CheckIcon sx={{ fontSize: 16, color: providerColors.groq, ml: 1 }} />
               )}
             </MenuItem>
           ))}
@@ -197,7 +298,7 @@ export function useSelectedModel(): string {
 
   useEffect(() => {
     const saved = localStorage.getItem(MODEL_STORAGE_KEY);
-    if (saved && GEMINI_MODELS.some((m) => m.id === saved)) {
+    if (saved && AI_MODELS.some((m) => m.id === saved)) {
       setModelId(saved);
     }
 

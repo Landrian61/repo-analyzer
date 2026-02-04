@@ -83,6 +83,13 @@ CRITICAL DIFF RULES:
 
 Be thorough but concise. Focus on actionable insights.`;
 
+// Check if model is a Groq model
+function isGroqModel(modelId: string): boolean {
+  return modelId.startsWith("llama-") || 
+         modelId.startsWith("openai/") || 
+         modelId.includes("groq");
+}
+
 // Convert tool declarations to Gemini format
 function getGeminiTools(): any[] {
   return toolDeclarations.map((tool) => ({
@@ -105,7 +112,266 @@ function getGeminiTools(): any[] {
   }));
 }
 
-// Main analysis action using Gemini with function calling
+// Convert tool declarations to OpenAI/Groq format
+function getGroqTools(): any[] {
+  return toolDeclarations.map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: {
+        type: "object",
+        properties: tool.parameters.properties,
+        required: tool.parameters.required,
+      },
+    },
+  }));
+}
+
+// Call Groq API
+async function callGroqAPI(
+  apiKey: string,
+  modelId: string,
+  messages: Array<{ role: string; content: string; tool_calls?: any[]; tool_call_id?: string }>,
+  tools?: any[]
+): Promise<any> {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages,
+      tools: tools && tools.length > 0 ? tools : undefined,
+      tool_choice: tools && tools.length > 0 ? "auto" : undefined,
+      temperature: 0.7,
+      max_tokens: 8000,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
+    const err: any = new Error(error.error?.message || `Groq API error: ${response.status}`);
+    err.status = response.status;
+    throw err;
+  }
+
+  return response.json();
+}
+
+// Process with Groq model
+async function processWithGroq(
+  ctx: any,
+  chatId: string,
+  fullQuery: string,
+  apiKey: string,
+  modelId: string,
+  owner: string,
+  name: string
+): Promise<any> {
+  const tools = getGroqTools();
+  let toolCallsExecuted: any[] = [];
+
+  // Initial message
+  const messages: Array<{ role: string; content: string; tool_calls?: any[]; tool_call_id?: string; name?: string }> = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: fullQuery },
+  ];
+
+  // Update progress
+  await ctx.runMutation(internal.progress.updateProgress, {
+    chatId,
+    status: "analyzing",
+    currentStep: "💬 Processing your question",
+  });
+
+  let response = await callGroqAPI(apiKey, modelId, messages, tools);
+  let assistantMessage = response.choices[0].message;
+
+  // Process tool calls in a loop
+  const MAX_ITERATIONS = 10;
+  let iteration = 0;
+
+  while (iteration < MAX_ITERATIONS && assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+    // Add assistant's message with tool calls to history
+    messages.push(assistantMessage);
+
+    // Execute each tool call
+    for (const toolCall of assistantMessage.tool_calls) {
+      const functionName = toolCall.function.name;
+      const functionArgs = JSON.parse(toolCall.function.arguments || "{}");
+
+      // Update progress
+      const toolDescription = TOOL_DESCRIPTIONS[functionName] || `⚙️ ${functionName}`;
+      await ctx.runMutation(internal.progress.updateProgress, {
+        chatId,
+        status: "analyzing",
+        currentStep: toolDescription,
+      });
+
+      console.log(`Executing tool: ${functionName}`, functionArgs);
+
+      // Add owner and repo to args if not provided
+      const argsWithContext = {
+        owner,
+        repo: name,
+        ...functionArgs,
+      };
+
+      const toolResult = await executeTool(functionName, argsWithContext);
+      
+      toolCallsExecuted.push({
+        name: functionName,
+        args: functionArgs,
+        result: typeof toolResult === 'object' && 'error' in toolResult ? toolResult : 'success',
+      });
+
+      // Add tool result to messages
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(toolResult),
+      });
+    }
+
+    // Update progress
+    await ctx.runMutation(internal.progress.updateProgress, {
+      chatId,
+      status: "analyzing",
+      currentStep: "🧠 Analyzing results",
+    });
+
+    // Get next response
+    response = await callGroqAPI(apiKey, modelId, messages, tools);
+    assistantMessage = response.choices[0].message;
+    iteration++;
+  }
+
+  // Update progress
+  await ctx.runMutation(internal.progress.updateProgress, {
+    chatId,
+    status: "analyzing",
+    currentStep: "✨ Generating response",
+  });
+
+  // Get final response text
+  const responseText = assistantMessage.content || "";
+
+  return { responseText, toolCallsExecuted };
+}
+
+// Process with Gemini model
+async function processWithGemini(
+  ctx: any,
+  chatId: string,
+  fullQuery: string,
+  apiKey: string,
+  modelId: string,
+  owner: string,
+  name: string
+): Promise<any> {
+  let toolCallsExecuted: any[] = [];
+
+  // Update progress
+  await ctx.runMutation(internal.progress.updateProgress, {
+    chatId,
+    status: "analyzing",
+    currentStep: "💬 Processing your question",
+  });
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: modelId,
+    systemInstruction: SYSTEM_PROMPT,
+    tools: [{ functionDeclarations: getGeminiTools() }],
+  });
+
+  // Start a chat session
+  const chat = model.startChat({
+    history: [],
+  });
+
+  let response = await chat.sendMessage(fullQuery);
+  let result = response.response;
+
+  // Process tool calls in a loop
+  const MAX_ITERATIONS = 10;
+  let iteration = 0;
+
+  while (iteration < MAX_ITERATIONS) {
+    const functionCalls = result.functionCalls();
+    
+    if (!functionCalls || functionCalls.length === 0) {
+      break;
+    }
+
+    // Execute all function calls and prepare responses
+    const toolResults = await Promise.all(
+      functionCalls.map(async (call) => {
+        const toolDescription = TOOL_DESCRIPTIONS[call.name] || `⚙️ ${call.name}`;
+        await ctx.runMutation(internal.progress.updateProgress, {
+          chatId,
+          status: "analyzing",
+          currentStep: toolDescription,
+        });
+
+        console.log(`Executing tool: ${call.name}`, call.args);
+        const toolResult = await executeTool(call.name, call.args);
+        toolCallsExecuted.push({
+          name: call.name,
+          args: call.args,
+          result: typeof toolResult === 'object' && 'error' in toolResult ? toolResult : 'success',
+        });
+        return {
+          name: call.name,
+          result: toolResult,
+        };
+      })
+    );
+
+    await ctx.runMutation(internal.progress.updateProgress, {
+      chatId,
+      status: "analyzing",
+      currentStep: "🧠 Analyzing results",
+    });
+
+    // Format function responses
+    const functionResponseParts = toolResults.map((tr) => {
+      let responseData = tr.result;
+      
+      if (Array.isArray(responseData)) {
+        responseData = { items: responseData };
+      } else if (typeof responseData !== 'object' || responseData === null) {
+        responseData = { value: responseData };
+      }
+
+      return {
+        functionResponse: {
+          name: tr.name,
+          response: responseData,
+        },
+      };
+    });
+
+    response = await chat.sendMessage(functionResponseParts);
+    result = response.response;
+    iteration++;
+  }
+
+  await ctx.runMutation(internal.progress.updateProgress, {
+    chatId,
+    status: "analyzing",
+    currentStep: "✨ Generating response",
+  });
+
+  const responseText = result.text() || "";
+
+  return { responseText, toolCallsExecuted };
+}
+
+// Main analysis action using Gemini or Groq with function calling
 export const analyzeWithTools = action({
   args: {
     chatId: v.id("chats"),
@@ -115,14 +381,20 @@ export const analyzeWithTools = action({
     modelId: v.optional(v.string()),
   },
   handler: async (ctx, { chatId, query, repositoryData, contributors, modelId }): Promise<any> => {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const selectedModel = modelId || "gemini-2.0-flash";
+    const selectedModel = modelId || "gemini-2.5-flash";
+    const useGroq = isGroqModel(selectedModel);
+    
+    const apiKey = useGroq 
+      ? process.env.GROQ_API_KEY 
+      : process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
+      const providerName = useGroq ? "Groq" : "Gemini";
+      const envVar = useGroq ? "GROQ_API_KEY" : "GEMINI_API_KEY";
       const errorResponse = {
         type: "text" as const,
         data: {
-          content: "⚠️ **Gemini API key not configured**\n\nPlease set the `GEMINI_API_KEY` environment variable in Convex.",
+          content: `⚠️ **${providerName} API key not configured**\n\nPlease set the \`${envVar}\` environment variable in Convex.`,
         },
       };
 
@@ -159,116 +431,25 @@ export const analyzeWithTools = action({
       await ctx.runMutation(internal.progress.updateProgress, {
         chatId,
         status: "analyzing",
-        currentStep: "🤖 Starting AI analysis",
+        currentStep: `🤖 Starting AI analysis with ${useGroq ? "Groq" : "Gemini"}`,
       });
 
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: selectedModel,
-        systemInstruction: SYSTEM_PROMPT,
-        tools: [{ functionDeclarations: getGeminiTools() }],
-      });
+      let responseText: string;
+      let toolCallsExecuted: any[];
 
-      // Start a chat session
-      const chat = model.startChat({
-        history: [],
-      });
-
-      // Update progress: Sending query
-      await ctx.runMutation(internal.progress.updateProgress, {
-        chatId,
-        status: "analyzing",
-        currentStep: "💬 Processing your question",
-      });
-
-      let response = await chat.sendMessage(fullQuery);
-      let result = response.response;
-      let toolCallsExecuted: any[] = [];
-
-      // Process tool calls in a loop
-      const MAX_ITERATIONS = 10;
-      let iteration = 0;
-
-      while (iteration < MAX_ITERATIONS) {
-        const functionCalls = result.functionCalls();
-        
-        if (!functionCalls || functionCalls.length === 0) {
-          break; // No more tool calls, we're done
-        }
-
-        // Execute all function calls and prepare responses
-        const toolResults = await Promise.all(
-          functionCalls.map(async (call) => {
-            // Update progress for this tool call
-            const toolDescription = TOOL_DESCRIPTIONS[call.name] || `⚙️ ${call.name}`;
-            await ctx.runMutation(internal.progress.updateProgress, {
-              chatId,
-              status: "analyzing",
-              currentStep: toolDescription,
-            });
-
-            console.log(`Executing tool: ${call.name}`, call.args);
-            const toolResult = await executeTool(call.name, call.args);
-            toolCallsExecuted.push({
-              name: call.name,
-              args: call.args,
-              result: typeof toolResult === 'object' && 'error' in toolResult ? toolResult : 'success',
-            });
-            return {
-              name: call.name,
-              result: toolResult,
-            };
-          })
-        );
-
-        // Update progress: Processing results
-        await ctx.runMutation(internal.progress.updateProgress, {
-          chatId,
-          status: "analyzing",
-          currentStep: "🧠 Analyzing results",
-        });
-
-        // Format function responses according to Gemini's expected format
-        // Gemini expects response to be an object (Struct), not an array
-        // So wrap arrays and primitives in an object
-        const functionResponseParts = toolResults.map((tr) => {
-          let responseData = tr.result;
-          
-          // If result is an array or primitive, wrap it in an object
-          if (Array.isArray(responseData)) {
-            responseData = { items: responseData };
-          } else if (typeof responseData !== 'object' || responseData === null) {
-            responseData = { value: responseData };
-          }
-
-          return {
-            functionResponse: {
-              name: tr.name,
-              response: responseData,
-            },
-          };
-        });
-
-        // Send function results back to the model
-        response = await chat.sendMessage(functionResponseParts);
-        result = response.response;
-        iteration++;
+      if (useGroq) {
+        const result = await processWithGroq(ctx, chatId, fullQuery, apiKey, selectedModel, owner, name);
+        responseText = result.responseText;
+        toolCallsExecuted = result.toolCallsExecuted;
+      } else {
+        const result = await processWithGemini(ctx, chatId, fullQuery, apiKey, selectedModel, owner, name);
+        responseText = result.responseText;
+        toolCallsExecuted = result.toolCallsExecuted;
       }
-
-      // Update progress: Generating response
-      await ctx.runMutation(internal.progress.updateProgress, {
-        chatId,
-        status: "analyzing",
-        currentStep: "✨ Generating response",
-      });
-
-      // Get the final text response
-      const responseText = result.text() || "";
 
       // Try to parse as structured response
       let parsedResponse;
       try {
-        // Check if the response is JSON
         const jsonMatch = responseText.match(/^\s*\{[\s\S]*\}\s*$/);
         if (jsonMatch) {
           parsedResponse = JSON.parse(jsonMatch[0]);
@@ -290,7 +471,6 @@ export const analyzeWithTools = action({
       }
 
       // Ensure response has proper structure before saving
-      // Validate that parsedResponse has the expected format
       const validatedResponse = {
         type: parsedResponse.type || "text",
         data: parsedResponse.data || { content: responseText },
@@ -301,7 +481,6 @@ export const analyzeWithTools = action({
       if (validatedResponse.type === "text" && typeof validatedResponse.data?.content === "string") {
         contentSummary = validatedResponse.data.content;
       } else if (validatedResponse.type === "mixed" && Array.isArray(validatedResponse.data?.sections)) {
-        // For mixed responses, try to extract text from the first text section
         const textSection = validatedResponse.data.sections.find((s: any) => s.type === "text");
         if (textSection?.data?.content) {
           contentSummary = textSection.data.content;
@@ -335,10 +514,10 @@ export const analyzeWithTools = action({
       console.error("Agent error:", error);
 
       let errorContent: string;
+      const providerName = useGroq ? "Groq" : "Gemini";
 
       // Check for rate limit / quota exceeded errors
-      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("Too Many Requests")) {
-        // Extract retry delay if available
+      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("Too Many Requests") || error.message?.includes("rate_limit")) {
         let retryInfo = "";
         if (error.errorDetails) {
           const retryDetail = error.errorDetails.find((detail: any) => detail["@type"]?.includes("RetryInfo"));
@@ -350,19 +529,17 @@ export const analyzeWithTools = action({
           }
         }
 
-        // Extract model name
-        const modelMatch = error.message?.match(/model:\s*([^\s,]+)/);
+        const modelMatch = error.message?.match(/model[:\s]*([^\s,]+)/i);
         const modelName = modelMatch ? modelMatch[1] : selectedModel;
 
-        errorContent = `⏱️ **Rate Limit Reached**\n\nYou've reached the request limit for the **${modelName}** model.${retryInfo}\n\n**What you can do:**\n- Wait a moment and try again\n- Switch to a different Gemini model in the header\n- Upgrade your Gemini API plan for higher limits\n\n💡 *Tip: Different models have separate rate limits, so switching models can help!*`;
+        errorContent = `⏱️ **Rate Limit Reached**\n\nYou've reached the request limit for the **${modelName}** model on ${providerName}.${retryInfo}\n\n**What you can do:**\n- Wait a moment and try again\n- Switch to a different model in the header\n- Different providers have separate rate limits\n\n💡 *Tip: Try switching between Gemini and Groq models!*`;
       } else if (error.status === 400) {
         errorContent = `❌ **Invalid Request**\n\nThere was an issue with the request format.\n\nThis might be a temporary issue. Please try:\n- Rephrasing your question\n- Trying a different model\n- Waiting a moment and trying again`;
       } else if (error.status === 403) {
-        errorContent = `🔒 **Access Denied**\n\nThe API key doesn't have permission for this operation.\n\nPlease check:\n- Your Gemini API key is valid\n- The API key has the necessary permissions\n- Your API quota hasn't been exceeded`;
+        errorContent = `🔒 **Access Denied**\n\nThe ${providerName} API key doesn't have permission for this operation.\n\nPlease check:\n- Your API key is valid\n- The API key has the necessary permissions\n- Your API quota hasn't been exceeded`;
       } else if (error.status === 404) {
-        errorContent = `🔍 **Model Not Found**\n\nThe selected AI model (${selectedModel}) couldn't be found.\n\nThis might mean:\n- The model is not available in your region\n- The model name has changed\n- The model requires a different API tier\n\nTry selecting a different model from the header.`;
+        errorContent = `🔍 **Model Not Found**\n\nThe selected AI model (${selectedModel}) couldn't be found on ${providerName}.\n\nThis might mean:\n- The model is not available in your region\n- The model name has changed\n- The model requires a different API tier\n\nTry selecting a different model from the header.`;
       } else {
-        // Generic error
         const shortError = error.message?.split('\n')[0] || "An unexpected error occurred";
         errorContent = `❌ **Error analyzing repository**\n\n${shortError}\n\nPlease try again or rephrase your question.`;
       }
@@ -380,7 +557,6 @@ export const analyzeWithTools = action({
         response: errorResponse,
       });
 
-      // Clear progress on error
       await ctx.runMutation(internal.progress.clearProgress, {
         chatId,
       });
@@ -400,14 +576,19 @@ export const analyzeSimple = action({
     modelId: v.optional(v.string()),
   },
   handler: async (ctx, { chatId, query, repositoryData, contributors, modelId }): Promise<any> => {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const selectedModel = modelId || "gemini-2.0-flash";
+    const selectedModel = modelId || "gemini-2.5-flash";
+    const useGroq = isGroqModel(selectedModel);
+    
+    const apiKey = useGroq 
+      ? process.env.GROQ_API_KEY 
+      : process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
+      const providerName = useGroq ? "Groq" : "Gemini";
       const errorResponse = {
         type: "text" as const,
         data: {
-          content: "⚠️ **Gemini API key not configured**",
+          content: `⚠️ **${providerName} API key not configured**`,
         },
       };
 
@@ -419,14 +600,6 @@ export const analyzeSimple = action({
 
       return errorResponse;
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: selectedModel,
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
 
     const systemPrompt = `You are an expert GitHub repository analyst. Analyze the provided data and return insights in JSON format.`;
 
@@ -450,9 +623,27 @@ USER QUERY: ${query}
 Return JSON with type: "text", "chart", "table", "diff", or "mixed".`;
 
     try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      let text: string;
+
+      if (useGroq) {
+        const response = await callGroqAPI(apiKey, selectedModel, [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ]);
+        text = response.choices[0].message.content || "";
+      } else {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: selectedModel,
+          generationConfig: {
+            responseMimeType: "application/json",
+          },
+        });
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        text = response.text();
+      }
 
       let parsedResponse;
       try {
@@ -475,13 +666,13 @@ Return JSON with type: "text", "chart", "table", "diff", or "mixed".`;
       return parsedResponse;
     } catch (error: any) {
       let errorContent: string;
+      const providerName = useGroq ? "Groq" : "Gemini";
 
-      // Check for rate limit / quota exceeded errors
-      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("Too Many Requests")) {
-        const modelMatch = error.message?.match(/model:\s*([^\s,]+)/);
+      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("Too Many Requests") || error.message?.includes("rate_limit")) {
+        const modelMatch = error.message?.match(/model[:\s]*([^\s,]+)/i);
         const modelName = modelMatch ? modelMatch[1] : selectedModel;
 
-        errorContent = `⏱️ **Rate Limit Reached**\n\nYou've reached the request limit for the **${modelName}** model.\n\n**What you can do:**\n- Wait a moment and try again\n- Switch to a different Gemini model in the header\n- Upgrade your Gemini API plan for higher limits\n\n💡 *Tip: Different models have separate rate limits!*`;
+        errorContent = `⏱️ **Rate Limit Reached**\n\nYou've reached the request limit for the **${modelName}** model on ${providerName}.\n\n**What you can do:**\n- Wait a moment and try again\n- Switch to a different model in the header\n\n💡 *Tip: Different providers have separate rate limits!*`;
       } else {
         const shortError = error.message?.split('\n')[0] || "An unexpected error occurred";
         errorContent = `❌ **Error**: ${shortError}`;
