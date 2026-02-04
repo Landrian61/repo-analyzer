@@ -297,21 +297,36 @@ export function useSelectedModel(): string {
   const [modelId, setModelId] = useState<string>(DEFAULT_MODEL);
 
   useEffect(() => {
+    // Initial load
     const saved = localStorage.getItem(MODEL_STORAGE_KEY);
     if (saved && AI_MODELS.some((m) => m.id === saved)) {
       setModelId(saved);
     }
 
-    // Listen for changes
+    // Listen for changes from other tabs
     const handleStorage = (e: StorageEvent) => {
       if (e.key === MODEL_STORAGE_KEY && e.newValue) {
         setModelId(e.newValue);
       }
     };
 
+    // Also poll for changes in same tab (localStorage doesn't fire events for same-tab changes)
+    const checkForChanges = () => {
+      const current = localStorage.getItem(MODEL_STORAGE_KEY);
+      if (current && current !== modelId && AI_MODELS.some((m) => m.id === current)) {
+        setModelId(current);
+      }
+    };
+
+    // Check periodically for same-tab changes
+    const interval = setInterval(checkForChanges, 500);
+
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
+  }, [modelId]);
 
   return modelId;
 }

@@ -384,6 +384,8 @@ export const analyzeWithTools = action({
     const selectedModel = modelId || "gemini-2.5-flash";
     const useGroq = isGroqModel(selectedModel);
     
+    console.log(`[Agent] Model requested: "${modelId}", Selected: "${selectedModel}", isGroq: ${useGroq}`);
+    
     const apiKey = useGroq 
       ? process.env.GROQ_API_KEY 
       : process.env.GEMINI_API_KEY;
