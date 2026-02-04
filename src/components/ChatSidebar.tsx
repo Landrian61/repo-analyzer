@@ -103,15 +103,15 @@ export function ChatSidebar({
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#111113",
-        borderRight: `1px solid ${alpha("#ffffff", 0.06)}`,
+        backgroundColor: (theme) => theme.palette.mode === "dark" ? "#111113" : "#f8fafc",
+        borderRight: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.06)}`,
       }}
     >
       {/* Header */}
       <Box
         sx={{
           p: 2,
-          borderBottom: `1px solid ${alpha("#ffffff", 0.06)}`,
+          borderBottom: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.06)}`,
         }}
       >
         {/* Back to home */}
@@ -126,7 +126,7 @@ export function ChatSidebar({
             textTransform: "none",
             fontSize: "0.8rem",
             "&:hover": {
-              backgroundColor: alpha("#ffffff", 0.05),
+              backgroundColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.05),
               color: "text.primary",
             },
           }}
@@ -142,7 +142,7 @@ export function ChatSidebar({
             sx={{ 
               width: 36, 
               height: 36,
-              border: `1px solid ${alpha("#ffffff", 0.1)}`,
+              border: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.1)}`,
             }}
           >
             {repository.owner[0]?.toUpperCase()}

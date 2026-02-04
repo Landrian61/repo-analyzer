@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Box, Typography, Paper, alpha, Chip, Tooltip } from "@mui/material";
+import { Box, Typography, Paper, alpha, Chip, Tooltip, useTheme } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -143,6 +143,9 @@ export function DiffResponse({
   deletions,
   files,
 }: DiffResponseProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  
   // Clean up diff - remove any markdown code fences if AI added them incorrectly
   const cleanDiff = (rawDiff: string): string => {
     if (!rawDiff) return '';
@@ -163,19 +166,19 @@ export function DiffResponse({
     const lines = cleanedDiff.split("\n");
     return lines.map((line, index) => {
       let backgroundColor = "transparent";
-      let color = "#d4d4d4";
+      let color = isDark ? "#d4d4d4" : "#374151";
 
       if (line.startsWith("+") && !line.startsWith("+++")) {
-        backgroundColor = alpha("#10b981", 0.15);
-        color = "#34d399";
+        backgroundColor = alpha("#10b981", isDark ? 0.15 : 0.12);
+        color = isDark ? "#34d399" : "#059669";
       } else if (line.startsWith("-") && !line.startsWith("---")) {
-        backgroundColor = alpha("#ef4444", 0.15);
-        color = "#f87171";
+        backgroundColor = alpha("#ef4444", isDark ? 0.15 : 0.12);
+        color = isDark ? "#f87171" : "#dc2626";
       } else if (line.startsWith("@@")) {
-        backgroundColor = alpha("#6366f1", 0.15);
-        color = "#818cf8";
+        backgroundColor = alpha("#6366f1", isDark ? 0.15 : 0.12);
+        color = isDark ? "#818cf8" : "#4f46e5";
       } else if (line.startsWith("diff") || line.startsWith("index")) {
-        color = "#9ca3af";
+        color = isDark ? "#9ca3af" : "#6b7280";
       }
 
       return (
@@ -201,8 +204,8 @@ export function DiffResponse({
   return (
     <Paper
       sx={{
-        backgroundColor: "#1e1e21",
-        border: `1px solid ${alpha("#ffffff", 0.1)}`,
+        backgroundColor: isDark ? "#1e1e21" : "#f8fafc",
+        border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
         borderRadius: 2,
         overflow: "hidden",
       }}
@@ -211,7 +214,7 @@ export function DiffResponse({
       <Box
         sx={{
           p: 2,
-          borderBottom: `1px solid ${alpha("#ffffff", 0.1)}`,
+          borderBottom: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -255,7 +258,7 @@ export function DiffResponse({
           sx={{
             px: 2,
             py: 1,
-            borderBottom: `1px solid ${alpha("#ffffff", 0.1)}`,
+            borderBottom: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
             display: "flex",
             flexWrap: "wrap",
             gap: 1,
@@ -268,7 +271,7 @@ export function DiffResponse({
                 icon={<InsertDriveFileIcon sx={{ fontSize: 14 }} />}
                 label={file.split("/").pop()}
                 sx={{
-                  backgroundColor: alpha("#ffffff", 0.05),
+                  backgroundColor: alpha(isDark ? "#ffffff" : "#000000", 0.05),
                   fontSize: "0.7rem",
                 }}
               />
@@ -309,6 +312,9 @@ export function ChartResponse({
   labels,
   datasets,
 }: ChartResponseProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  
   // Transform data for Recharts
   const chartData = labels.map((label, index) => {
     const dataPoint: Record<string, any> = { name: label };
@@ -429,8 +435,8 @@ export function ChartResponse({
     <Paper
       sx={{
         p: 3,
-        backgroundColor: "#1e1e21",
-        border: `1px solid ${alpha("#ffffff", 0.1)}`,
+        backgroundColor: isDark ? "#1e1e21" : "#f8fafc",
+        border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
         borderRadius: 2,
       }}
     >
@@ -456,17 +462,20 @@ interface TableResponseProps {
 }
 
 export function TableResponse({ title, headers, rows, summary }: TableResponseProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  
   return (
     <Paper
       sx={{
-        backgroundColor: "#1e1e21",
-        border: `1px solid ${alpha("#ffffff", 0.1)}`,
+        backgroundColor: isDark ? "#1e1e21" : "#f8fafc",
+        border: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
         borderRadius: 2,
         overflow: "hidden",
       }}
     >
       {title && (
-        <Box sx={{ p: 2, borderBottom: `1px solid ${alpha("#ffffff", 0.1)}` }}>
+        <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}` }}>
           <Typography variant="h6">{title}</Typography>
         </Box>
       )}
@@ -487,8 +496,8 @@ export function TableResponse({ title, headers, rows, summary }: TableResponsePr
                   style={{
                     padding: "12px 16px",
                     textAlign: "left",
-                    backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                    backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                    borderBottom: `1px solid ${isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
                     fontWeight: 600,
                     whiteSpace: "nowrap",
                   }}
@@ -505,7 +514,7 @@ export function TableResponse({ title, headers, rows, summary }: TableResponsePr
                 style={{
                   borderBottom:
                     rowIndex < rows.length - 1
-                      ? "1px solid rgba(255, 255, 255, 0.05)"
+                      ? `1px solid ${isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)"}`
                       : "none",
                 }}
               >
@@ -530,7 +539,7 @@ export function TableResponse({ title, headers, rows, summary }: TableResponsePr
         <Box
           sx={{
             p: 2,
-            borderTop: `1px solid ${alpha("#ffffff", 0.1)}`,
+            borderTop: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.1)}`,
             backgroundColor: alpha("#8b5cf6", 0.05),
           }}
         >

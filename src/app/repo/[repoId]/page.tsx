@@ -212,7 +212,7 @@ export default function RepositoryPage() {
       sx={{
         display: "flex",
         minHeight: "100vh",
-        backgroundColor: "#0f0f10",
+        backgroundColor: "background.default",
       }}
     >
       {/* Sidebar */}
@@ -242,8 +242,8 @@ export default function RepositoryPage() {
           sx={{
             px: 3,
             py: 2,
-            borderBottom: `1px solid ${alpha("#ffffff", 0.06)}`,
-            backgroundColor: alpha("#0f0f10", 0.95),
+            borderBottom: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.06)}`,
+            backgroundColor: (theme) => alpha(theme.palette.background.default, 0.95),
             backdropFilter: "blur(12px)",
             display: "flex",
             alignItems: "center",
@@ -256,7 +256,7 @@ export default function RepositoryPage() {
               sx={{ 
                 width: 40, 
                 height: 40,
-                border: `1px solid ${alpha("#ffffff", 0.1)}`,
+                border: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.1)}`,
               }}
             >
               {repository.owner[0]}

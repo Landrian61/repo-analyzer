@@ -153,7 +153,9 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
           sx={{ 
             fontWeight: 600, 
             mb: 1,
-            background: "linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%)",
+            background: (theme) => theme.palette.mode === "dark"
+              ? "linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%)"
+              : "linear-gradient(135deg, #0f172a 0%, #475569 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
           }}
@@ -184,9 +186,9 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
                 sx={{
                   justifyContent: "flex-start",
                   textTransform: "none",
-                  borderColor: alpha("#ffffff", 0.1),
+                  borderColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.1),
                   color: "text.primary",
-                  backgroundColor: alpha("#ffffff", 0.02),
+                  backgroundColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.02),
                   borderRadius: 2,
                   py: 1.5,
                   px: 2,
@@ -279,11 +281,11 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
             <Paper
               sx={{
                 p: 2.5,
-                backgroundColor:
+                backgroundColor: (theme) =>
                   message.role === "user" 
                     ? alpha("#8b5cf6", 0.12) 
-                    : alpha("#ffffff", 0.03),
-                border: `1px solid ${alpha("#ffffff", message.role === "user" ? 0.15 : 0.06)}`,
+                    : alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.03),
+                border: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", message.role === "user" ? 0.15 : 0.06)}`,
                 borderRadius: 3,
                 position: "relative",
                 "&:hover .copy-button": {
@@ -313,9 +315,9 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
                     right: 8,
                     opacity: 0,
                     transition: "opacity 150ms",
-                    backgroundColor: alpha("#ffffff", 0.1),
+                    backgroundColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.1),
                     "&:hover": {
-                      backgroundColor: alpha("#ffffff", 0.15),
+                      backgroundColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.15),
                     },
                   }}
                 >
@@ -356,8 +358,8 @@ export function ChatMessages({ messages, isLoading, onSuggestionClick, progressM
           <Paper
             sx={{
               p: 2.5,
-              backgroundColor: alpha("#ffffff", 0.03),
-              border: `1px solid ${alpha("#ffffff", 0.06)}`,
+              backgroundColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.03),
+              border: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.06)}`,
               borderRadius: 3,
               minWidth: 200,
             }}

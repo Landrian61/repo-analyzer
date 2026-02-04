@@ -38,7 +38,7 @@ export default function HomePage() {
   const isLoading = repositories === undefined;
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#0f0f10" }}>
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
       <Header />
 
       <Box sx={{ flexGrow: 1 }}>
@@ -76,7 +76,9 @@ export default function HomePage() {
                 fontWeight: 700,
                 mb: 2,
                 fontSize: { xs: "1.75rem", sm: "2.25rem", md: "2.75rem" },
-                background: "linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%)",
+                background: (theme) => theme.palette.mode === "dark" 
+                  ? "linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%)"
+                  : "linear-gradient(135deg, #0f172a 0%, #475569 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 lineHeight: 1.2,
