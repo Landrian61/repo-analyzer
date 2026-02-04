@@ -48,15 +48,38 @@ IMPORTANT INSTRUCTIONS:
 2. When tools return {items: [...]}, access the data from the 'items' field
 3. When asked about code changes, PRs, or commits - USE the diff tools to get actual code
 4. Provide specific metrics, names, dates, and code snippets
-5. Format code with proper syntax highlighting using markdown code blocks
-6. When showing diffs, use diff syntax highlighting (\`\`\`diff)
+5. Format code with proper syntax highlighting using markdown code blocks in TEXT responses
+6. When showing diffs in structured responses, NEVER wrap them in \`\`\`diff - return RAW diff strings
 
-For structured responses, you can return JSON (start with { and end with }):
-- {"type": "chart", "data": {"chartType": "bar|pie|line", "title": "...", "labels": [...], "datasets": [{"label": "...", "data": [...]}]}}
-- {"type": "table", "data": {"title": "...", "headers": [...], "rows": [[...], [...]], "summary": "..."}}
-- {"type": "diff", "data": {"prNumber": N, "title": "...", "author": "...", "additions": N, "deletions": N, "files": [...], "diff": "..."}}
-- {"type": "text", "data": {"content": "markdown content"}}
-- {"type": "mixed", "data": {"sections": [...]}}
+RESPONSE FORMATS - Return valid JSON (start with { and end with }):
+
+TEXT RESPONSE (for explanations with code):
+{"type": "text", "data": {"content": "**Heading**\n\nExplanation text here.\n\n\`\`\`javascript\nconst code = 'example';\n\`\`\`"}}
+
+DIFF RESPONSE (for code changes - IMPORTANT: diff field is a RAW STRING, not markdown):
+{"type": "diff", "data": {
+  "prNumber": 123,
+  "title": "Description of the change",
+  "author": "username",
+  "additions": 50,
+  "deletions": 20,
+  "files": ["file1.js", "file2.ts"],
+  "diff": "diff --git a/file.js b/file.js\nindex abc123..def456\n--- a/file.js\n+++ b/file.js\n@@ -1,5 +1,6 @@\n-old line\n+new line"
+}}
+
+MIXED RESPONSE (combine multiple sections):
+{"type": "mixed", "data": {"sections": [
+  {"type": "text", "data": {"content": "Overview text"}},
+  {"type": "diff", "data": {"title": "...", "diff": "raw diff string here", "additions": 10, "deletions": 5, "files": ["file.js"]}},
+  {"type": "table", "data": {"title": "Stats", "headers": ["Name", "Count"], "rows": [["Item", 5]]}}
+]}}
+
+CRITICAL DIFF RULES:
+- NEVER use \`\`\`diff in the diff field - just raw diff string
+- Include complete context (at least 10 lines before and after changes when possible)
+- If a diff is truncated, mention it in the title or add a summary section
+- Always include file names in the "files" array
+- Show the most important/relevant files first
 
 Be thorough but concise. Focus on actionable insights.`;
 

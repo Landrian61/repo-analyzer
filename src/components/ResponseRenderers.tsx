@@ -92,7 +92,7 @@ export function TextResponse({ content }: TextResponseProps) {
 
 // Diff Response Renderer
 interface DiffResponseProps {
-  prNumber: number;
+  prNumber?: number | string;
   title: string;
   author: string;
   diff: string;
@@ -110,9 +110,24 @@ export function DiffResponse({
   deletions,
   files,
 }: DiffResponseProps) {
+  // Clean up diff - remove any markdown code fences if AI added them incorrectly
+  const cleanDiff = (rawDiff: string): string => {
+    if (!rawDiff) return '';
+    
+    // Remove leading/trailing code fences like ```diff and ```
+    let cleaned = rawDiff.trim();
+    if (cleaned.startsWith('```diff') || cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:diff)?\n?/, '');
+      cleaned = cleaned.replace(/\n?```$/, '');
+    }
+    
+    return cleaned.trim();
+  };
+  
   // Parse and colorize diff
   const renderDiff = () => {
-    const lines = diff.split("\n");
+    const cleanedDiff = cleanDiff(diff);
+    const lines = cleanedDiff.split("\n");
     return lines.map((line, index) => {
       let backgroundColor = "transparent";
       let color = "#d4d4d4";
@@ -173,7 +188,7 @@ export function DiffResponse({
       >
         <Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            PR #{prNumber}: {title}
+            {prNumber && prNumber !== "N/A" ? `PR #${prNumber}: ` : ""}{title}
           </Typography>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             by @{author}

@@ -310,10 +310,12 @@ async function getPullRequestDetails(octokit: Octokit, args: { owner: string; re
       owner: args.owner,
       repo: args.repo,
       pull_number: args.prNumber,
-      per_page: 50,
+      per_page: 100,
     }),
   ]);
 
+  const MAX_PATCH_SIZE = 10000;
+  
   return {
     number: prData.data.number,
     title: prData.data.title,
@@ -330,13 +332,22 @@ async function getPullRequestDetails(octokit: Octokit, args: { owner: string; re
     mergedAt: prData.data.merged_at,
     baseBranch: prData.data.base.ref,
     headBranch: prData.data.head.ref,
-    files: filesData.data.map((f: any) => ({
-      filename: f.filename,
-      status: f.status,
-      additions: f.additions,
-      deletions: f.deletions,
-      patch: f.patch?.slice(0, 3000),
-    })),
+    files: filesData.data.map((f: any) => {
+      const patch = f.patch || '';
+      const truncated = patch.length > MAX_PATCH_SIZE;
+      const displayPatch = truncated 
+        ? patch.slice(0, MAX_PATCH_SIZE) + '\n\n... [Diff truncated - file too large]'
+        : patch;
+      
+      return {
+        filename: f.filename,
+        status: f.status,
+        additions: f.additions,
+        deletions: f.deletions,
+        patch: displayPatch,
+        truncated,
+      };
+    }),
     url: prData.data.html_url,
   };
 }
@@ -474,8 +485,13 @@ async function getCommitDiff(octokit: Octokit, args: { owner: string; repo: stri
     ref: args.sha,
   });
 
+  const MAX_PATCH_SIZE = 10000;
+  const MAX_FILES = 50;
+  const totalFiles = data.files?.length || 0;
+
   return {
     sha: data.sha.slice(0, 7),
+    fullSha: data.sha,
     message: data.commit.message,
     author: data.author?.login || data.commit.author?.name,
     date: data.commit.author?.date,
@@ -484,13 +500,24 @@ async function getCommitDiff(octokit: Octokit, args: { owner: string; repo: stri
       deletions: data.stats?.deletions || 0,
       total: data.stats?.total || 0,
     },
-    files: data.files?.slice(0, 20).map((file: any) => ({
-      filename: file.filename,
-      status: file.status,
-      additions: file.additions,
-      deletions: file.deletions,
-      patch: file.patch?.slice(0, 2000),
-    })),
+    totalFiles,
+    filesShown: Math.min(totalFiles, MAX_FILES),
+    files: data.files?.slice(0, MAX_FILES).map((file: any) => {
+      const patch = file.patch || '';
+      const truncated = patch.length > MAX_PATCH_SIZE;
+      const displayPatch = truncated 
+        ? patch.slice(0, MAX_PATCH_SIZE) + '\n\n... [Diff truncated - file too large]'
+        : patch;
+      
+      return {
+        filename: file.filename,
+        status: file.status,
+        additions: file.additions,
+        deletions: file.deletions,
+        patch: displayPatch,
+        truncated,
+      };
+    }),
   };
 }
 
