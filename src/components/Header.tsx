@@ -1,10 +1,14 @@
 "use client";
 
-import { Box, Typography, alpha } from "@mui/material";
+import { Box, Typography, alpha, useTheme } from "@mui/material";
 import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 import { ModelSelector } from "./ModelSelector";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   return (
     <Box
       component="header"
@@ -15,8 +19,8 @@ export function Header() {
         gap: 2,
         py: 2,
         px: 4,
-        borderBottom: `1px solid ${alpha("#ffffff", 0.06)}`,
-        backgroundColor: alpha("#0f0f10", 0.95),
+        borderBottom: `1px solid ${alpha(isDark ? "#ffffff" : "#000000", 0.06)}`,
+        backgroundColor: alpha(isDark ? "#0f0f10" : "#ffffff", 0.95),
         backdropFilter: "blur(12px)",
         position: "sticky",
         top: 0,
@@ -73,8 +77,11 @@ export function Header() {
         </Box>
       </Box>
 
-      {/* Model selector */}
-      <ModelSelector />
+      {/* Model selector and theme toggle */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        <ModelSelector />
+        <ThemeToggle />
+      </Box>
     </Box>
   );
 }

@@ -2,9 +2,7 @@
 
 import { ReactNode } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
-import theme from "./theme";
+import { ThemeProvider } from "./ThemeContext";
 import { ToastProvider } from "@/components/Toast";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -16,8 +14,7 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ConvexProvider client={convex}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
+      <ThemeProvider>
         <ToastProvider>
           {children}
         </ToastProvider>

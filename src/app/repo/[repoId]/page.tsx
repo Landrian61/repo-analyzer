@@ -10,8 +10,10 @@ import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatMessages } from "@/components/ChatMessages";
 import { MessageInput } from "@/components/MessageInput";
 import { ModelSelector, useSelectedModel } from "@/components/ModelSelector";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import StarIcon from "@mui/icons-material/Star";
 import ForkRightIcon from "@mui/icons-material/ForkRight";
+import { useTheme } from "@mui/material";
 
 const SIDEBAR_WIDTH = 280;
 
@@ -287,13 +289,14 @@ export default function RepositoryPage() {
           
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <ModelSelector compact />
+            <ThemeToggle size="small" />
             <Chip
               label="⌘K New Chat"
               size="small"
               onClick={handleNewChat}
               sx={{
-                backgroundColor: alpha("#ffffff", 0.05),
-                border: `1px solid ${alpha("#ffffff", 0.1)}`,
+                backgroundColor: (theme) => alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.05),
+                border: (theme) => `1px solid ${alpha(theme.palette.mode === "dark" ? "#ffffff" : "#000000", 0.1)}`,
                 color: "text.secondary",
                 fontSize: "0.7rem",
                 height: 28,

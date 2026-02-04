@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+/* Dark mode (default) */
+:root,
+.dark {
   --background: #0f0f10;
   --foreground: #fafafa;
   --primary: #8b5cf6;
@@ -8,6 +10,31 @@
   --muted: #a1a1aa;
   --border: rgba(255, 255, 255, 0.08);
   --card: #18181b;
+  --card-hover: #1f1f23;
+  --scrollbar-track: #18181b;
+  --scrollbar-thumb: #3f3f46;
+  --scrollbar-thumb-hover: #52525b;
+  --code-bg: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(24, 24, 27, 0.8);
+  --table-header-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* Light mode */
+.light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #8b5cf6;
+  --secondary: #6366f1;
+  --muted: #64748b;
+  --border: rgba(0, 0, 0, 0.08);
+  --card: #ffffff;
+  --card-hover: #f1f5f9;
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+  --code-bg: rgba(0, 0, 0, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --table-header-bg: rgba(0, 0, 0, 0.04);
 }
 
 @theme inline {
@@ -42,16 +69,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #18181b;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Code and pre elements */
@@ -61,7 +88,7 @@ code {
 
 pre {
   font-family: var(--font-mono), "JetBrains Mono", "Fira Code", monospace;
-  background-color: #1e1e21;
+  background-color: var(--card);
   border-radius: 8px;
   overflow-x: auto;
 }
@@ -139,9 +166,9 @@ button {
 
 /* Glass effect */
 .glass {
-  background: rgba(24, 24, 27, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
 }
 
 /* Markdown content styles */
@@ -171,7 +198,7 @@ button {
 }
 
 .markdown-content code {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--code-bg);
   padding: 0.2em 0.4em;
   border-radius: 4px;
   font-size: 0.875em;
@@ -212,5 +239,10 @@ button {
 }
 
 .markdown-content th {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--table-header-bg);
+}
+
+/* Theme transition */
+* {
+  transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
 }
